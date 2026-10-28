@@ -6,7 +6,7 @@ from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
-from app.models.order import utc_now
+from app.models.base import utc_now
 
 
 class MessageRole(str, Enum):

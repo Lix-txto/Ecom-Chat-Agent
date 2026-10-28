@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 from app.core.config import settings
-from app.models.order import utc_now
+from app.models.base import utc_now
 
 
 class KnowledgeChunk(SQLModel, table=True):

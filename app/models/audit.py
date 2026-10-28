@@ -4,7 +4,7 @@ from typing import Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from app.models.order import utc_now
+from app.models.base import utc_now
 
 
 class AuditStatus(str, Enum):

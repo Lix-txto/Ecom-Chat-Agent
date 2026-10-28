@@ -5,15 +5,10 @@
 """
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-
-from passlib.context import CryptContext
 from sqlmodel import Session, select
-
 from app.core.database import sync_engine
+from app.core.security import hash_password
 from app.models import Order, OrderStatus, User, UserRole
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def days_ago(n: int) -> datetime:
     return datetime.now(timezone.utc) - timedelta(days=n)
@@ -47,7 +42,7 @@ def main() -> None:
             u = User(
                 username=username,
                 email=email,
-                hashed_password=pwd_context.hash(raw_pwd),
+                hashed_password=hash_password(raw_pwd),
                 role=role,
             )
             session.add(u)
@@ -72,7 +67,7 @@ def main() -> None:
 
         # 自检：密码哈希可验证
         admin = session.exec(select(User).where(User.username == "admin")).one()
-        assert pwd_context.verify("admin123", admin.hashed_password)
+        assert hash_password("admin123") == admin.hashed_password
         assert len(zhangsan.orders) == 5
 
         print(f"✅ Seed 完成：2 个用户（admin/admin123, zhangsan/zhangsan123），5 笔订单")

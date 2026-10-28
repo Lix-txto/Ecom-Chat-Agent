@@ -2,7 +2,9 @@
 
 注意：跨文件 Relationship 依赖此聚合导入完成注册。
 """
-from app.models.order import Order, OrderStatus, User, UserRole
+from app.models.base import utc_now
+from app.models.user import User, UserRole
+from app.models.order import Order, OrderStatus
 from app.models.refund import Refund, RefundStatus
 from app.models.audit import AuditAction, AuditLog, AuditStatus
 from app.models.knowledge import KnowledgeChunk
