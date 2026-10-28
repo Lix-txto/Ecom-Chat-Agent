@@ -1,0 +1,40 @@
+# docker-compose.yaml
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: agent_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_DB:-knowledge_base}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    # 改用 redis-stack，内置 RediSearch/RedisJSON 模块，满足 langgraph-checkpoint-redis 依赖<span data-allow-html class='source-item source-aggregated' data-group-key='source-group-19' data-url='https://github&#46;com/redis&#45;developer/langgraph&#45;redis' data-id='turn1search3'><span data-allow-html class='source-item-num' data-group-key='source-group-19' data-id='turn1search3' data-url='https://github&#46;com/redis&#45;developer/langgraph&#45;redis'><span class='source-item-num-name' data-allow-html>github.com</span><span data-allow-html class='source-item-num-count'></span></span></span>
+    image: redis/redis-stack-server:latest
+    container_name: ecommerce_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+
+#不把 FastAPI/Celery Worker 放进 Compose——它们跑在 WSL2 宿主机上由 uv 管理，改代码即热重载。
+#如果把它们也容器化了，那样每次改代码都要重新 build，迭代效率低。生产部署时再加回 app/celery_worker 两个 service 即可，两者不冲突。
