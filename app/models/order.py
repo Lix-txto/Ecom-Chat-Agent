@@ -26,7 +26,9 @@ class Order(SQLModel, table=True):
     amount: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
     status: OrderStatus = Field(default=OrderStatus.PENDING_PAYMENT, index=True)
     created_at: datetime = Field(default_factory=utc_now)   # 退款资格校验依据
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now,
+                                sa_column_kwargs={"onupdate": utc_now},  # 每次 UPDATE 自动刷新
+                                )
 
     user: Optional["User"] = Relationship(
         back_populates="orders", sa_relationship_kwargs={"lazy": "selectin"}
