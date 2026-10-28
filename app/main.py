@@ -1,9 +1,21 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from typing import Any
+from fastapi import FastAPI, Depends
+from app.core.config import settings
+from app.core.security import get_current_user
+from app.models import User
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup：M6 在此初始化 Redis 连接池等
+    yield
+    # shutdown
 
 app = FastAPI(
     title="FastAPI Template",
-    description="我不是人机",
-    version="0.1.0"
+    version="0.2.0",
+    lifespan=lifespan
 )
 
 @app.get("/")
@@ -25,3 +37,13 @@ async def health_check():
             "管理员工作台"
             ]
             }
+
+# TODO(M5): 迁入正式 router；此处为 M2 鉴权链路手动验证端点
+@app.get("/me")
+async def me(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role.value,
+    }
