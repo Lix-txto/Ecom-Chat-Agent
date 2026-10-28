@@ -14,31 +14,42 @@
 3. 函数级 fixture：每个测试前 TRUNCATE 全部表并重建演示数据；
    订单日期相对"当前时刻"动态生成，测试不会随时间流逝而腐烂。
 """
+"""
+
+隔离策略：
+1. 导入 app 之前注入环境变量 —— OPENAI/DASHSCOPE 置空强制【离线确定性】
+   （空字符串环境变量优先级高于 .env，覆盖真实 Key；
+    如需真实 LLM 冒烟：OPENAI_API_KEY=sk-... uv run pytest）
+2. 测试库 knowledge_base_test 独立于开发库（模型含 pgvector/JSONB，SQLite 建不了表）
+3. 会话级建库建表（幂等）；函数级 TRUNCATE + 动态日期种子
+"""
 import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from urllib.parse import quote_plus
 
-# ==== 必须在导入 app 之前设置（本文件内 import 顺序即执行顺序） ====
+# ==== 必须在导入 app 之前设置 ====
 os.environ["JWT_SECRET_KEY"] = "pytest-secret-key-not-for-production"
-os.environ["POSTGRES_DB"] = "knowledge_base_test"        # 强制指向测试库
-os.environ.setdefault("POSTGRES_PASSWORD", "admin")     # 其余连接参数允许 .env 提供真实值
+os.environ["POSTGRES_DB"] = "knowledge_base_test"
+os.environ.setdefault("POSTGRES_PASSWORD", "admin")
 os.environ.setdefault("POSTGRES_USER", "postgres")
 os.environ.setdefault("POSTGRES_HOST", "localhost")
 os.environ.setdefault("POSTGRES_PORT", "5432")
+# 强制离线：确保键存在于进程环境（空串优先级高于 .env 的真实 Key）
+os.environ.setdefault("DEEPSEEK_API_KEY", "")
+os.environ.setdefault("SILICONFLOW_API_KEY", "")
 
 import pytest  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlmodel import SQLModel, Session  # noqa: E402
 
-import app.models  # noqa: E402,F401  注册全部表到 SQLModel.metadata
+import app.models  # noqa: E402,F401
 from app.core.config import settings  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
-from app.models import Order, OrderStatus, User, UserRole  # noqa: E402
+from app.models import KnowledgeChunk, Order, OrderStatus, User, UserRole  # noqa: E402
 
-TEST_DB_NAME = settings.POSTGRES_DB  # 即 knowledge_base_test
+TEST_DB_NAME = settings.POSTGRES_DB
 
-# bcrypt 很慢（故意的）：整个测试进程只算一次，所有测试用户共用同一哈希
 _HASHED_TEST_PW = hash_password("test-password-123")
 
 _TRUNCATE_SQL = (
@@ -53,7 +64,6 @@ def days_ago(n: int) -> datetime:
 
 @pytest.fixture(scope="session")
 def _database():
-    """会话级：确保测试库存在且 schema 就绪。"""
     admin_url = (
         f"postgresql+psycopg2://{settings.POSTGRES_USER}:"
         f"{quote_plus(settings.POSTGRES_PASSWORD)}"
@@ -69,17 +79,16 @@ def _database():
             conn.execute(text(f'CREATE DATABASE "{TEST_DB_NAME}"'))
     admin_engine.dispose()
 
-    from app.core.database import sync_engine  # 引擎按测试库配置创建
+    from app.core.database import sync_engine
 
     with sync_engine.begin() as conn:
         conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
-    SQLModel.metadata.create_all(sync_engine)  # checkfirst：幂等
+    SQLModel.metadata.create_all(sync_engine)
     yield
 
 
 @pytest.fixture()
 def db_session(_database):
-    """函数级：全新会话 + 清空所有表。"""
     from app.core.database import sync_engine
 
     with Session(sync_engine) as session:
@@ -111,7 +120,6 @@ def seed_orders(db_session, seed_users):
     lid = seed_users["lisi"].id
 
     spec = [
-        # (key, 订单号, 商品, 数量, 金额, 状态, 下单距今天数)
         ("shipped_recent",  "T-SHIP-RECENT", "蓝牙键盘",     1, "59.00",   OrderStatus.SHIPPED, 3),
         ("shipped_old",     "T-SHIP-OLD",    "无线降噪耳机", 1, "299.00",  OrderStatus.SHIPPED, 15),
         ("paid",            "T-PAID",        "4K 显示器",    1, "1280.00", OrderStatus.PAID, 1),
@@ -134,3 +142,28 @@ def seed_orders(db_session, seed_users):
         orders[key] = order
     db_session.commit()
     return orders
+
+
+@pytest.fixture()
+def seed_knowledge(db_session):
+    """离线 Hash 嵌入的政策块（供 Retrieve / workflow 政策问答测试）。"""
+    from app.graph.llm import get_embeddings
+
+    embeddings = get_embeddings()
+    docs = [
+        ("退货政策", "自收到商品之日起 7 天内可以申请无理由退货，商品需保持完好。订单金额不超过 100 元的退款将自动批准。"),
+        ("物流时效", "完成支付后 48 小时内发货，普通快递一般 3-5 个工作日送达，偏远地区可能延长。"),
+        ("运费说明", "单笔订单满 99 元免运费，不满 99 元收取 8 元运费。"),
+    ]
+    for i, (heading, content) in enumerate(docs):
+        db_session.add(
+            KnowledgeChunk(
+                source="test_policy.md", chunk_index=i,
+                content=f"## {heading}\n{content}",
+                embedding=embeddings.embed_query(f"{heading} {content}"),
+                meta={"heading": heading},
+            )
+        )
+    db_session.commit()
+    return {heading: content for heading, content in docs}
+
