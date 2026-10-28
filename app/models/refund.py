@@ -35,3 +35,4 @@ class Refund(SQLModel, table=True):
     audit_logs: list["AuditLog"] = Relationship(
         back_populates="refund", sa_relationship_kwargs={"lazy": "selectin"}
     )
+
