@@ -38,6 +38,9 @@ os.environ.setdefault("POSTGRES_PORT", "5432")
 # 强制离线：确保键存在于进程环境（空串优先级高于 .env 的真实 Key）
 os.environ.setdefault("DEEPSEEK_API_KEY", "")
 os.environ.setdefault("SILICONFLOW_API_KEY", "")
+os.environ["CELERY_ENABLED"] = "false"           # 派发器 no-op：既有测试零感知
+os.environ["PAYMENT_SIMULATION_SECONDS"] = "0"   # 直接调任务函数时不 sleep
+
 
 import pytest  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402

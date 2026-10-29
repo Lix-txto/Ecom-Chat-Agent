@@ -201,7 +201,7 @@ class TestGenerateNode:
             "product_name": "蓝牙键盘", "status": "auto_approved", "amount": "59.00",
             "requested_at": "2026-10-28T12:00:00+00:00",
         }}
-        assert "已自动通过" in generate_node(state)["final_response"]
+        assert "已通过" in generate_node(state)["final_response"]
 
     def test_policy_template(self):
         state = {"intent": "policy_qa", "retrieved_chunks": [

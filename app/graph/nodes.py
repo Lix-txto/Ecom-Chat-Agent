@@ -33,6 +33,8 @@ from app.graph.tools import (
     submit_refund_application,
 )
 from app.models import KnowledgeChunk, Order, OrderStatus
+from app.tasks.dispatcher import dispatch_admin_notification, dispatch_refund_payment
+
 
 RETRIEVE_TOP_K = 3
 
@@ -244,13 +246,24 @@ def refund_handle_node(state: AgentState) -> dict:
 
 
 def audit_check_node(state: AgentState) -> dict:
-    """检查退款申请是否需要人工审核。
+    """审计分流：派发 Celery 任务（唯一 agent 侧派发点，服务层保持零 Celery 依赖）。
 
-    M6 将在此节点挂接 Celery：needs_audit=True 时派发管理员通知任务。
+    - 自动批准 → dispatch_refund_payment（worker 异步打款 → REFUNDED → WS 推送）
+    - 转人工   → dispatch_admin_notification（提醒管理员，经 pub/sub 广播到管理员 WS）
+    测试环境 CELERY_ENABLED=false，派发为 no-op。
     """
     application = state.get("refund_application")
     needs_audit = bool(application and application.get("needs_manual_review"))
+
+    if application and application.get("success") and application.get("refund_no"):
+        refund_no = application["refund_no"]
+        if needs_audit:
+            dispatch_admin_notification(refund_no)
+        elif application.get("auto_approved"):
+            dispatch_refund_payment(refund_no)
+
     return {"needs_audit": needs_audit}
+
 
 
 # ================= Retrieve（RAG） =================

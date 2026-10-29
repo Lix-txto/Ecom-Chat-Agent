@@ -40,7 +40,7 @@ async def ws_endpoint(
         return
 
     is_admin = user.role == UserRole.ADMIN
-    manager.register(session_id, ws, is_admin=is_admin)
+    manager.register(session_id, ws, user_id=user.id, is_admin=is_admin)
     await ws.accept()
     await ws.send_json({
         "type": "connected",

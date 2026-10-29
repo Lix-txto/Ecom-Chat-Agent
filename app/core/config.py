@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = ""      # 留空回落到 REDIS_URL
     CELERY_RESULT_BACKEND: str = ""
+    CELERY_ENABLED: bool = True                  # 测试/离线环境置 false：派发器变 no-op
+    PAYMENT_SIMULATION_SECONDS: int = 2          # 模拟打款耗时，让 PROCESSING 可观察
 
     # ---- Chat：DeepSeek ----
     DEEPSEEK_API_KEY: str

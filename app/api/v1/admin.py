@@ -27,6 +27,8 @@ from app.models import (
     utc_now,
 )
 from app.websocket.manager import manager
+from app.tasks.dispatcher import dispatch_refund_payment, dispatch_refund_sms  # M6
+
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 
@@ -61,13 +63,13 @@ def list_pending_audits():
 
 @router.post("/audits/{audit_id}/decision", response_model=DecisionResponse)
 async def decide(audit_id: int, req: DecisionRequest, admin: User = Depends(get_current_admin)):
-    def _apply() -> tuple[str, str | None]:
+    def _apply() -> tuple[str, str | None, int]:
         with Session(sync_engine) as session:
             audit = session.get(AuditLog, audit_id)
             if audit is None:
-                return "not_found", None
+                return "not_found", None, 0
             if audit.status != AuditStatus.PENDING:
-                return "conflict", None
+                return "conflict", None, 0
 
             refund = audit.refund
             order = refund.order
@@ -88,17 +90,24 @@ async def decide(audit_id: int, req: DecisionRequest, admin: User = Depends(get_
             audit.resolved_at = utc_now()
 
             refund_no = refund.refund_no
+            user_id = refund.user_id                      # M6：commit 前取，reject 定向通知要用            
             session.add(audit)
             session.add(refund)
             session.add(order)
             session.commit()
-            return "ok", refund_no
+            return "ok", refund_no, user_id
 
-    outcome, refund_no = await run_in_threadpool(_apply)
+    outcome, refund_no, user_id = await run_in_threadpool(_apply)
     if outcome == "not_found":
         raise HTTPException(status_code=404, detail="审核任务不存在")
     if outcome == "conflict":
         raise HTTPException(status_code=409, detail="该审核任务已处理")
+    # M6：按裁决派发（CELERY_ENABLED=false 时 dispatcher 内部为 no-op，测试零依赖）
+    if req.action == "approve":
+        dispatch_refund_payment(refund_no)                      # worker 异步打款
+    else:
+        dispatch_refund_sms(user_id, refund_no, success=False)  # 定向通知：退款被拒
+
 
     await manager.broadcast_admins({
         "type": "audit_resolved",

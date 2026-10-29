@@ -1,17 +1,25 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from app.core.config import settings
+from app.core.pubsub import listen_events
+from app.websocket.events import handle_event
 from app.api.v1 import auth, chat, status, admin, websocket
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup: M6：在此启动 Redis pub/sub 监听任务（Celery → WS 通知桥接）
+    # M6：Redis pub/sub 监听 —— worker 进程事件（打款完成等）→ WS 推送
+    listener = asyncio.create_task(listen_events(handle_event))
     yield
     # shutdown
+    listener.cancel()
+    with suppress(asyncio.CancelledError):
+        await listener
 
 app = FastAPI(
     title="FastAPI Template",
-    version="0.5.0",
+    version="0.6.0",
     lifespan=lifespan
 )
 
