@@ -47,7 +47,7 @@ _ORDER_STATUS_LABELS = {
 }
 _REFUND_STATUS_LABELS = {
     "pending": "待审核",
-    "auto_approved": "已自动通过",
+    "auto_approved": "已通过",
     "processing": "退款处理中",
     "refunded": "已退款",
     "rejected": "已拒绝",

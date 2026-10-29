@@ -35,7 +35,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ---------- JWT ----------
 
 # tokenUrl 指向 M5 将实现的登录端点；在此之前 Swagger 的 Authorize 按钮不可用（属预期）
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login",
+    auto_error=False,        # ← 缺凭证时返回 None 而非自动抛 401
+)
 
 
 def _credentials_exception(detail: str) -> HTTPException:
@@ -85,10 +88,15 @@ def decode_token(token: str) -> dict[str, Any]:
 # ---------- FastAPI 依赖 ----------
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_session),
 ) -> User:
     """解析 Bearer token 并返回当前活跃用户。"""
+    if token is None:                                 # ← 新增：缺 token → 403
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authenticated",
+        )
     payload = decode_token(token)
     username = payload["sub"]
 

@@ -1,22 +1,26 @@
 from contextlib import asynccontextmanager
-from typing import Any
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from app.core.config import settings
-from app.core.security import get_current_user
-from app.models import User
-
+from app.api.v1 import auth, chat, status, admin, websocket
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup：M6 在此初始化 Redis 连接池等
+    # startup: M6：在此启动 Redis pub/sub 监听任务（Celery → WS 通知桥接）
     yield
     # shutdown
 
 app = FastAPI(
     title="FastAPI Template",
-    version="0.2.0",
+    version="0.5.0",
     lifespan=lifespan
 )
+
+API_PREFIX = "/api/v1"
+app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(chat.router, prefix=API_PREFIX)
+app.include_router(status.router, prefix=API_PREFIX)
+app.include_router(admin.router, prefix=API_PREFIX)
+app.include_router(websocket.router, prefix=API_PREFIX)
 
 @app.get("/")
 async def root():
@@ -38,12 +42,3 @@ async def health_check():
             ]
             }
 
-# TODO(M5): 迁入正式 router；此处为 M2 鉴权链路手动验证端点
-@app.get("/me")
-async def me(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
-    return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "email": current_user.email,
-        "role": current_user.role.value,
-    }

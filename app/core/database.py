@@ -5,6 +5,7 @@
 from collections.abc import AsyncGenerator,Generator
 
 from sqlalchemy.ext.asyncio import async_sessionmaker,create_async_engine
+from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
@@ -14,7 +15,11 @@ sync_engine = create_engine(
     settings.database_url_sync, echo=False, pool_pre_ping=True
 )
 # FastAPI 运行时用（M2 提供 AsyncSession 依赖）
-async_engine = create_async_engine(settings.database_url_async, pool_pre_ping=True)
+async_engine = create_async_engine(
+    settings.database_url_async,
+    pool_pre_ping=True,
+    poolclass=NullPool,   # 连接即用即弃：每次 checkout 都在当前循环新建
+)
 
 async_session_factory = async_sessionmaker(
     bind=async_engine, class_=AsyncSession, expire_on_commit=False

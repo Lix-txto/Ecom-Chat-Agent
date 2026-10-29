@@ -99,6 +99,10 @@ def db_session(_database):
 
 @pytest.fixture()
 def seed_users(db_session):
+    admin = User(
+        username="admin", email="admin@test.local",
+        hashed_password=_HASHED_TEST_PW, role=UserRole.ADMIN,
+    )
     zhangsan = User(
         username="zhangsan", email="zhangsan@test.local",
         hashed_password=_HASHED_TEST_PW, role=UserRole.CUSTOMER,
@@ -107,10 +111,11 @@ def seed_users(db_session):
         username="lisi", email="lisi@test.local",
         hashed_password=_HASHED_TEST_PW, role=UserRole.CUSTOMER,
     )
+    db_session.add(admin)
     db_session.add(zhangsan)
     db_session.add(lisi)
     db_session.commit()
-    return {"zhangsan": zhangsan, "lisi": lisi}
+    return {"zhangsan": zhangsan, "lisi": lisi, "admin": admin}
 
 
 @pytest.fixture()
@@ -167,3 +172,18 @@ def seed_knowledge(db_session):
     db_session.commit()
     return {heading: content for heading, content in docs}
 
+@pytest.fixture()
+def client(_database):
+    """FastAPI TestClient：graph 换成每测试独立的 MemorySaver 图，
+    避免共享单例的 Redis Checkpointer 把线程态泄漏进测试。"""
+    from fastapi.testclient import TestClient
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.api.v1.chat import _get_graph
+    from app.graph.workflow import build_workflow
+    from app.main import app
+
+    app.dependency_overrides[_get_graph] = lambda: build_workflow(InMemorySaver())
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()

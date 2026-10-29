@@ -10,7 +10,7 @@ from app.models.base import utc_now
 
 class RefundStatus(str, Enum):
     PENDING = "pending"              # 已提交，待规则/人工裁决
-    AUTO_APPROVED = "auto_approved"  # 自动通过，进入支付流程
+    AUTO_APPROVED = "auto_approved"  # 自动通过，进入支付流程  # 裁决通过（金额阈值自动通过或管理员批准），进入支付流程
     PROCESSING = "processing"        # Celery 执行退款支付中
     REFUNDED = "refunded"            # 已到账
     REJECTED = "rejected"            # 已拒绝
