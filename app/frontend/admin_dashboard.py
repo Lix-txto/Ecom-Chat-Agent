@@ -8,11 +8,13 @@ from .login import auth_headers
 
 _EMPTY_AUTH = {"token": None, "role": None, "username": None}
 _TABLE_HEADERS = ["审核ID", "退款单号", "订单号", "商品", "用户", "金额", "原因", "申请时间"]
+_BADGE_LOGGED_OUT = '<div class="badge">🔒 未登录</div>'
 
 
-def build_admin(api_base: str, auth: gr.State, login_ui: SimpleNamespace) -> SimpleNamespace:
+
+def build_admin(api_base: str, auth: gr.State, login_ui: SimpleNamespace, user_badge: gr.HTML) -> SimpleNamespace:
     with gr.Group(visible=False) as view:
-        welcome = gr.Markdown("")
+        welcome = gr.Markdown("### 🛠 管理员控制台\n待审退款任务如下，决策后自动刷新")
         refresh_btn = gr.Button("🔄 刷新待审任务")
         audits = gr.DataFrame(headers=_TABLE_HEADERS, value=[], interactive=False, wrap=True)
         with gr.Row():
@@ -69,8 +71,8 @@ def build_admin(api_base: str, auth: gr.State, login_ui: SimpleNamespace) -> Sim
     decide_btn.click(_decide, [audit_id, action, comment, auth], [decide_msg, audits])
 
     def _logout():
-        return dict(_EMPTY_AUTH), gr.update(visible=True), gr.update(visible=False), ""
+        return (dict(_EMPTY_AUTH), gr.update(visible=True), gr.update(visible=False), "", _BADGE_LOGGED_OUT)
 
-    logout_btn.click(_logout, None, [auth, login_ui.view, view, login_ui.login_msg])
+    logout_btn.click(_logout, None, [auth, login_ui.view, view, login_ui.login_msg], user_badge)
 
     return SimpleNamespace(view=view, welcome=welcome, audits=audits)
