@@ -30,7 +30,7 @@ from pathlib import Path
 
 # labels.py 末尾（原样粘贴函数体）
 def _emoji_avatar(emoji: str, bg: str) -> str:
-    d = Path(tempfile.gettempdir()) / "abot_avatars"
+    d = Path(tempfile.gettempdir()) / "Ecom-Chat-Agent_avatars"
     d.mkdir(exist_ok=True)
     p = d / f"{emoji}_{bg.strip('#')}.svg"
     p.write_text(

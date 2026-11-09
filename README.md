@@ -1,4 +1,4 @@
-# ABot · 电商智能客服 Agent
+# Ecom-Chat-Agent · 电商智能客服 Agent
 
 基于 FastAPI \+ SQLModel \+ LangGraph \+ Celery \+ Gradio 的电商智能客服 Agent：
 订单查询、退款办理（规则引擎 \+ 自动/人工分流）、政策知识库 RAG 问答。
@@ -32,7 +32,7 @@ DeepSeek（Chat）· 硅基流动 bge\-m3（Embedding，1024 维）· Gradio · 
 ## 项目结构
 
 ```text
-ABot/
+Ecom-Chat-Agent/
 ├── app/                  # 后端包：api / services / tasks / graph / models / core
 ├── frontend/             # Gradio 前端（纯 HTTP 客户端，与 app 包零 import 耦合）
 ├── scripts/              # seed_data.py / etl_policy.py

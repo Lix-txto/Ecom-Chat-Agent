@@ -42,7 +42,7 @@ CSS = """
 
 
 # ① Blocks 构造器删掉 theme、css 两个参数
-with gr.Blocks(title="ABot 智能客服") as demo:
+with gr.Blocks(title="Ecom-Chat-Agent 智能客服") as demo:
     auth = gr.State(dict(_EMPTY_AUTH))
     """
     # ② launch() 接管，值原样照抄
@@ -56,7 +56,7 @@ with gr.Blocks(title="ABot 智能客服") as demo:
     """
     # ---- 顶部品牌栏 ----
     with gr.Row(elem_classes=["app-header"]):
-        gr.HTML('<div class="brand">🛍️ ABot 智能客服助手</div>')
+        gr.HTML('<div class="brand">🛍️ Ecom-Chat-Agent 智能客服助手</div>')
         user_badge = gr.HTML(_BADGE_LOGGED_OUT)
 
     login_ui = build_login()
@@ -70,7 +70,7 @@ with gr.Blocks(title="ABot 智能客服") as demo:
 
     # ---- 登录事件（需要引用全部视图 → 唯一在 app.py 接线）----
     GREETING = (
-        "👋 您好！我是 ABot 智能客服助手。\n\n"
+        "👋 您好！我是 Ecom-Chat-Agent 智能客服助手。\n\n"
         "可以帮我：**查询订单 / 办理退款 / 查退款进度 / 解答退货政策**。\n"
         "💡 点击右侧快捷指令可一键体验，或直接在下方输入。"
     )

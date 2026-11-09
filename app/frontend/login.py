@@ -34,7 +34,7 @@ def auth_headers(auth: dict | None) -> dict:
 def build_login() -> SimpleNamespace:
     with gr.Group(visible=True) as view:
         gr.Markdown(
-            "### 🔐 ABot 智能客服 · 登录\n\n"
+            "### 🔐 Ecom-Chat-Agent 智能客服 · 登录\n\n"
             "演示账号：`zhangsan / zhangsan123`（用户）· `admin / admin123`（管理员）"
         )
         username = gr.Textbox(label="用户名", placeholder="zhangsan")
